@@ -13,46 +13,6 @@ local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/WetCh
 -- Create Window
 local Window, MainGUI = Library:CreateWindow("South Bronx GUI")
 
--- Enable dragging on mobile
-pcall(function()
-    local gui = MainGUI or Window
-    if gui and gui:IsA("ScreenGui") then
-        gui.ResetOnSpawn = false
-        local dragToggle, dragInput, dragStart, startPos
-
-        local function updateInput(input)
-            local delta = input.Position - dragStart
-            gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-                                      startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-
-        gui.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragToggle = true
-                dragStart = input.Position
-                startPos = gui.Position
-                input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then
-                        dragToggle = false
-                    end
-                end)
-            end
-        end)
-
-        gui.InputChanged:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
-                dragInput = input
-            end
-        end)
-
-        UserInputService.InputChanged:Connect(function(input)
-            if input == dragInput and dragToggle then
-                updateInput(input)
-            end
-        end)
-    end
-end)
-
 -- Tabs
 local ESP_Tab = Window:CreateTab("ESP")
 local Aim_Tab = Window:CreateTab("Aim")
