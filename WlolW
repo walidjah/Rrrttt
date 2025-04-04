@@ -39,52 +39,23 @@ local FOV_Visible = false
 local FOV_Color = Color3.fromRGB(255, 255, 255)
 
 local Holding = false
-
---------------------------------------------------
--- ESP Section
---------------------------------------------------
-ESPSection:CreateToggle("Box ESP", function(state)
-    BoxESPEnabled = state
-end)
-
-ESPSection:CreateToggle("Skeleton ESP", function(state)
-    SkeletonESPEnabled = state
-end)
-
-ESPSection:CreateColorPicker("ESP Color", ESPColor, function(color)
-    ESPColor = color
-end)
---------------------------------------------------
--- Speed Limit Variables (Security)
---------------------------------------------------
-local MapSpeedLimit = 200  -- قيمة افتراضية، سيتم تحديثها عند الكشف
+local safePlayers = {}
+local MapSpeedLimit = 200
 local LockSpeedEnabled = false
-
---------------------------------------------------
--- God Mode Variable
---------------------------------------------------
 local GodModeEnabled = false
 
-
---------------------------------------------------
 -- FOV Circle Drawing
---------------------------------------------------
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Filled = false
 FOVCircle.Transparency = 0.7
 FOVCircle.NumSides = 64
 FOVCircle.Thickness = 1.5
 
-
---------------------------------------------------
 -- ESP Drawings Storage (per player)
---------------------------------------------------
 local espDrawings = {} -- { [player] = { Box = drawing, Health = drawing } }
 local skeletonDrawings = {} -- { [player] = { Lines = {line1, line2, ...} } }
- 
---------------------------------------------------
+
 -- Functions for Box ESP
---------------------------------------------------
 local function CreateESP(player)
     if espDrawings[player] then return end
     local box = Drawing.new("Square")
@@ -92,16 +63,16 @@ local function CreateESP(player)
     box.Color = ESPColor
     box.Filled = false
     box.Visible = false
- 
+
     local healthBar = Drawing.new("Square")
     healthBar.Thickness = 0
     healthBar.Filled = true
     healthBar.Color = Color3.new(0, 1, 0)
     healthBar.Visible = false
- 
+
     espDrawings[player] = { Box = box, Health = healthBar }
 end
- 
+
 local function RemoveESP(player)
     if espDrawings[player] then
         if espDrawings[player].Box then espDrawings[player].Box:Remove() end
@@ -115,7 +86,7 @@ local function RemoveESP(player)
         skeletonDrawings[player] = nil
     end
 end
- 
+
 local function UpdateESP()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -131,7 +102,7 @@ local function UpdateESP()
                     drawings.Box.Position = Vector2.new(rootPos.X - 20, rootPos.Y - 40)
                     drawings.Box.Color = ESPColor
                     drawings.Box.Visible = BoxESPEnabled
- 
+
                     -- Health Bar to the left
                     local healthPerc = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
                     local barHeight = 80 * healthPerc
@@ -149,14 +120,11 @@ local function UpdateESP()
         end
     end
 end
- 
---------------------------------------------------
--- Functions for Skeleton ESP (Basic Implementation)
---------------------------------------------------
+
+-- Functions for Skeleton ESP
 local function CreateSkeletonESP(player)
     if skeletonDrawings[player] then return end
     local lines = {}
-    -- We'll attempt to draw lines between key body parts if they exist.
     local parts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
     for i = 1, #parts-1 do
         local line = Drawing.new("Line")
@@ -168,14 +136,13 @@ local function CreateSkeletonESP(player)
     end
     skeletonDrawings[player] = { Lines = lines }
 end
- 
+
 local function UpdateSkeletonESP()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             CreateSkeletonESP(player)
             local sData = skeletonDrawings[player]
             local character = player.Character
-            -- تأكد من وجود بعض الأجزاء الرئيسية
             local head = character:FindFirstChild("Head")
             local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
             local larm = character:FindFirstChild("Left Arm") or character:FindFirstChild("LeftUpperArm")
@@ -191,37 +158,32 @@ local function UpdateSkeletonESP()
                     LeftLeg = Camera:WorldToViewportPoint(lleg.Position),
                     RightLeg = Camera:WorldToViewportPoint(rleg.Position)
                 }
-                -- رسم بعض الخطوط (مثلاً من الرأس إلى الجذع، ومن الجذع إلى الأذرع والساقين)
+                
                 local lines = sData.Lines
-                -- خط من الرأس إلى الجذع
                 if partsPositions.Head and partsPositions.Torso then
                     lines[1].From = Vector2.new(partsPositions.Head.X, partsPositions.Head.Y)
                     lines[1].To = Vector2.new(partsPositions.Torso.X, partsPositions.Torso.Y)
                     lines[1].Color = ESPColor
                     lines[1].Visible = SkeletonESPEnabled
                 end
-                -- خط من الجذع إلى الذراع اليسار
                 if partsPositions.Torso and partsPositions.LeftArm then
                     lines[2].From = Vector2.new(partsPositions.Torso.X, partsPositions.Torso.Y)
                     lines[2].To = Vector2.new(partsPositions.LeftArm.X, partsPositions.LeftArm.Y)
                     lines[2].Color = ESPColor
                     lines[2].Visible = SkeletonESPEnabled
                 end
-                -- خط من الجذع إلى الذراع اليمين
                 if partsPositions.Torso and partsPositions.RightArm then
                     lines[3].From = Vector2.new(partsPositions.Torso.X, partsPositions.Torso.Y)
                     lines[3].To = Vector2.new(partsPositions.RightArm.X, partsPositions.RightArm.Y)
                     lines[3].Color = ESPColor
                     lines[3].Visible = SkeletonESPEnabled
                 end
-                -- خط من الجذع إلى الساق اليسار
                 if partsPositions.Torso and partsPositions.LeftLeg then
                     lines[4].From = Vector2.new(partsPositions.Torso.X, partsPositions.Torso.Y)
                     lines[4].To = Vector2.new(partsPositions.LeftLeg.X, partsPositions.LeftLeg.Y)
                     lines[4].Color = ESPColor
                     lines[4].Visible = SkeletonESPEnabled
                 end
-                -- خط من الجذع إلى الساق اليمين
                 if partsPositions.Torso and partsPositions.RightLeg then
                     lines[5].From = Vector2.new(partsPositions.Torso.X, partsPositions.Torso.Y)
                     lines[5].To = Vector2.new(partsPositions.RightLeg.X, partsPositions.RightLeg.Y)
@@ -234,82 +196,59 @@ local function UpdateSkeletonESP()
         end
     end
 end
- 
---------------------------------------------------
--- Visibility Check (Raycasting) -- (تم استخدامه أعلاه)
---------------------------------------------------
- 
---------------------------------------------------
--- Aim Safe: استخدام Dropdown لاختيار لاعب من القائمة لتجاهله
---------------------------------------------------
-local function RefreshSafePlayers()
-    local safeList = {}
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            table.insert(safeList, player.Name)
-        end
-    end
-    return safeList
-end
 
-
---------------------------------------------------
--- Function to Get Closest Player for Aimbot (مع الفحص والإستثناء)
---------------------------------------------------
+-- Function to Get Closest Player for Aimbot
 local function GetClosestPlayer()
     local closestDistance = FOV_Radius
     local targetPlayer = nil
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             if TeamCheck and player.Team == LocalPlayer.Team then continue end
-            if table.find(safePlayers, player.Name) then continue end  -- تجاهل اللاعبين في Aim Safe
+            if table.find(safePlayers, player.Name) then continue end
             local aimPart = player.Character:FindFirstChild(AimPart)
             if aimPart then
                 local screenPos, onScreen = Camera:WorldToViewportPoint(aimPart.Position)
                 local mousePos = UserInputService:GetMouseLocation()
                 local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-                if onScreen and distance < closestDistance and (function() 
+                if onScreen and distance < closestDistance then
                     local origin = Camera.CFrame.Position
                     local direction = (aimPart.Position - origin)
                     local params = RaycastParams.new()
                     params.FilterDescendantsInstances = {LocalPlayer.Character}
                     params.FilterType = Enum.RaycastFilterType.Blacklist
                     local res = workspace:Raycast(origin, direction, params)
-                    return res and res.Instance and res.Instance:IsDescendantOf(player.Character)
-                end)() then
-                    closestDistance = distance
-                    targetPlayer = player
+                    if res and res.Instance and res.Instance:IsDescendantOf(player.Character) then
+                        closestDistance = distance
+                        targetPlayer = player
+                    end
                 end
             end
         end
     end
     return targetPlayer
 end
- 
---------------------------------------------------
--- Input for Aimbot (Hold right mouse button)
---------------------------------------------------
+
+-- Input for Aimbot
 UserInputService.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         Holding = true
     end
 end)
+
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton2 then
         Holding = false
     end
 end)
- 
---------------------------------------------------
+
 -- Main RenderStepped Loop
---------------------------------------------------
 RunService.RenderStepped:Connect(function()
     -- Update FOV Circle
     FOVCircle.Position = UserInputService:GetMouseLocation()
     FOVCircle.Radius = FOV_Radius
     FOVCircle.Color = FOV_Color
     FOVCircle.Visible = FOV_Visible
- 
+
     -- Update Box ESP if enabled
     if BoxESPEnabled then
         UpdateESP()
@@ -318,13 +257,13 @@ RunService.RenderStepped:Connect(function()
             RemoveESP(player)
         end
     end
- 
+
     -- Update Skeleton ESP if enabled
     if SkeletonESPEnabled then
         UpdateSkeletonESP()
     end
- 
-    -- Aimbot Logic: إذا كان الضغط على زر الفأرة اليمنى مفعلاً
+
+    -- Aimbot Logic
     if Holding and AimbotEnabled then
         local target = GetClosestPlayer()
         if target and target.Character and target.Character:FindFirstChild(AimPart) then
@@ -332,56 +271,35 @@ RunService.RenderStepped:Connect(function()
             TweenService:Create(Camera, TweenInfo.new(Sensitivity), {CFrame = CFrame.new(Camera.CFrame.Position, targetPart.Position)}):Play()
         end
     end
- 
-    -- تأمين السرعة: عدم تجاوز سرعة اللاعب الحد المكتشف
+
+    -- Speed Lock
     if LockSpeedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         local currentSpeed = LocalPlayer.Character.Humanoid.WalkSpeed
         if currentSpeed > MapSpeedLimit then
             LocalPlayer.Character.Humanoid.WalkSpeed = MapSpeedLimit
         end
     end
- 
-    -- God Mode: إعادة ضبط الصحة إلى الحد الأقصى إذا كان مفعل
+
+    -- God Mode
     if GodModeEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.Health = LocalPlayer.Character.Humanoid.MaxHealth
     end
 end)
 
-)
- 
---------------------------------------------------
 -- ESP Tab Controls
---------------------------------------------------
-ESPSection:NewToggle("Box ESP", "Enable/Disable Box ESP", function(state)
+ESPSection:CreateToggle("Box ESP", function(state)
     BoxESPEnabled = state
 end)
-ESPSection:NewToggle("Skeleton ESP", "Enable/Disable Skeleton ESP", function(state)
+
+ESPSection:CreateToggle("Skeleton ESP", function(state)
     SkeletonESPEnabled = state
-    -- عند التفعيل يتم إنشاء الرسومات لكل لاعب
-    if SkeletonESPEnabled then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                CreateESP(player)
-                CreateSkeletonESP(player)
-            end
-        end
-    else
-        for player, _ in pairs(skeletonDrawings) do
-            if skeletonDrawings[player] then
-                for _, line in pairs(skeletonDrawings[player].Lines) do
-                    if line then line:Remove() end
-                end
-                skeletonDrawings[player] = nil
-            end
-        end
-    end
 end)
-ESPSection:NewColorPicker("ESP Color", "Change ESP Color", ESPColor, function(color)
+
+ESPSection:CreateColorPicker("ESP Color", ESPColor, function(color)
     ESPColor = color
 end)
---------------------------------------------------
--- Aim Section
---------------------------------------------------
+
+-- Aim Tab Controls
 AimSection:CreateToggle("Enable Aimbot", function(state)
     AimbotEnabled = state
 end)
@@ -410,23 +328,112 @@ AimSection:CreateColorPicker("FOV Color", FOV_Color, function(color)
     FOV_Color = color
 end)
 
---------------------------------------------------
--- Security Section Additions SecuritySection:CreateButton("Detect Speed Limit", function() local detectedSpeed = 0 for _, player in pairs(Players:GetPlayers()) do if player.Character and player.Character:FindFirstChild("Humanoid") then local speed = player.Character.Humanoid.WalkSpeed if speed > detectedSpeed then detectedSpeed = speed end end end if detectedSpeed > 0 then MapSpeedLimit = detectedSpeed StarterGui:SetCore("SendNotification", { Title = "SPEED LIMIT DETECTED", Text = "THE SPEED LIMIT IS: " .. MapSpeedLimit, Duration = 5 }) else StarterGui:SetCore("SendNotification", { Title = "SPEED LIMIT DETECTED", Text = "Could not detect speed limit; using default (" .. MapSpeedLimit .. ")", Duration = 5 }) end end)
+-- Security Tab Controls
+SecuritySection:CreateButton("Detect Speed Limit", function()
+    local detectedSpeed = 0
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            local speed = player.Character.Humanoid.WalkSpeed
+            if speed > detectedSpeed then
+                detectedSpeed = speed
+            end
+        end
+    end
+    if detectedSpeed > 0 then
+        MapSpeedLimit = detectedSpeed
+        StarterGui:SetCore("SendNotification", {
+            Title = "SPEED LIMIT DETECTED",
+            Text = "THE SPEED LIMIT IS: " .. MapSpeedLimit,
+            Duration = 5
+        })
+    else
+        StarterGui:SetCore("SendNotification", {
+            Title = "SPEED LIMIT DETECTED",
+            Text = "Could not detect speed limit; using default (" .. MapSpeedLimit .. ")",
+            Duration = 5
+        })
+    end
+end)
 
-SecuritySection:CreateToggle("Lock Speed", function(state) LockSpeedEnabled = state end)
+SecuritySection:CreateToggle("Lock Speed", function(state)
+    LockSpeedEnabled = state
+end)
 
-SecuritySection:CreateSlider("Set Player Speed", 1, 100, 16, function(value) if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then value = math.clamp(value, 1, MapSpeedLimit) LocalPlayer.Character.Humanoid.WalkSpeed = value end end)
+SecuritySection:CreateSlider("Set Player Speed", 1, 100, 16, function(value)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        value = math.clamp(value, 1, MapSpeedLimit)
+        LocalPlayer.Character.Humanoid.WalkSpeed = value
+    end
+end)
 
-SecuritySection:CreateToggle("God Mode", function(state) GodModeEnabled = state end)
+SecuritySection:CreateToggle("God Mode", function(state)
+    GodModeEnabled = state
+end)
 
-SecuritySection:CreateButton("Rehealth", function() if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.Health = LocalPlayer.Character.Humanoid.MaxHealth end end)
+SecuritySection:CreateButton("Rehealth", function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.Health = LocalPlayer.Character.Humanoid.MaxHealth
+    end
+end)
 
-SecuritySection:CreateButton("Check Anti-Teleport", function() if workspace:FindFirstChild("AntiTeleport") then StarterGui:SetCore("SendNotification", { Title = "ANTI-TELEPORT SYSTEM", Text = "There is an Anti-Teleport System active!", Duration = 5 }) else StarterGui:SetCore("SendNotification", { Title = "ANTI-TELEPORT SYSTEM", Text = "No Anti-Teleport System detected.", Duration = 5 }) end end)
+SecuritySection:CreateButton("Check Anti-Teleport", function()
+    if workspace:FindFirstChild("AntiTeleport") then
+        StarterGui:SetCore("SendNotification", {
+            Title = "ANTI-TELEPORT SYSTEM",
+            Text = "There is an Anti-Teleport System active!",
+            Duration = 5
+        })
+    else
+        StarterGui:SetCore("SendNotification", {
+            Title = "ANTI-TELEPORT SYSTEM",
+            Text = "No Anti-Teleport System detected.",
+            Duration = 5
+        })
+    end
+end)
 
-local teleportTarget = nil SecuritySection:CreateDropdown("Select Teleport Target", (function() local names = {} for _, player in ipairs(Players:GetPlayers()) do if player ~= LocalPlayer then table.insert(names, player.Name) end end return names end)(), function(selected) teleportTarget = selected end)
+local teleportTarget = nil
+SecuritySection:CreateDropdown("Select Teleport Target", function()
+    local names = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(names, player.Name)
+        end
+    end
+    return names
+end, function(selected)
+    teleportTarget = selected
+end)
 
-SecuritySection:CreateButton("Teleport To Player", function() if teleportTarget then local targetPlayer = Players:FindFirstChild(teleportTarget) if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then if workspace:FindFirstChild("AntiTeleport") then StarterGui:SetCore("SendNotification", { Title = "ANTI-TELEPORT ALERT", Text = "Cannot teleport! Anti-Teleport System is active!", Duration = 5 }) else LocalPlayer.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame end end end end)
+SecuritySection:CreateButton("Teleport To Player", function()
+    if teleportTarget then
+        local targetPlayer = Players:FindFirstChild(teleportTarget)
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            if workspace:FindFirstChild("AntiTeleport") then
+                StarterGui:SetCore("SendNotification", {
+                    Title = "ANTI-TELEPORT ALERT",
+                    Text = "Cannot teleport! Anti-Teleport System is active!",
+                    Duration = 5
+                })
+            else
+                LocalPlayer.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame
+            end
+        end
+    end
+end)
 
--- About Section Additions local success, gameInfo = pcall(function() return MarketplaceService:GetProductInfo(game.PlaceId) end) local gameName = success and gameInfo.Name or "Unknown Game" local thumbType = Enum.ThumbnailType.HeadShot local thumbSize = Enum.ThumbnailSize.Size100x100 local avatarUrl = Players:GetUserThumbnailAsync(LocalPlayer.UserId, thumbType, thumbSize)
+-- About Tab Controls
+local success, gameInfo = pcall(function()
+    return MarketplaceService:GetProductInfo(game.PlaceId)
+end)
+local gameName = success and gameInfo.Name or "Unknown Game"
+local thumbType = Enum.ThumbnailType.HeadShot
+local thumbSize = Enum.ThumbnailSize.Size100x100
+local avatarUrl = Players:GetUserThumbnailAsync(LocalPlayer.UserId, thumbType, thumbSize)
 
-AboutSection:CreateLabel("Player Name: " .. LocalPlayer.Name) AboutSection:CreateLabel("UserId: " .. LocalPlayer.UserId) AboutSection:CreateLabel("Display Name: " .. LocalPlayer.DisplayName) AboutSection:CreateLabel("Game: " .. gameName) AboutSection:CreateLabel("Avatar URL: " .. avatarUrl) AboutSection:CreateLabel("Account Age: " .. tostring(LocalPlayer.AccountAge))
+AboutSection:CreateLabel("Player Name: " .. LocalPlayer.Name)
+AboutSection:CreateLabel("UserId: " .. LocalPlayer.UserId)
+AboutSection:CreateLabel("Display Name: " .. LocalPlayer.DisplayName)
+AboutSection:CreateLabel("Game: " .. gameName)
+AboutSection:CreateLabel("Avatar URL: " .. avatarUrl)
+AboutSection:CreateLabel("Account Age: " .. tostring(LocalPlayer.AccountAge))
